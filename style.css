@@ -23,8 +23,8 @@
 }
 
 .hand-card {
-    width: 80px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -58,4 +58,22 @@
     margin-left: 20px;
     padding: 10px 20px;
     font-size: 16px;
+}
+
+.card-avatar {
+    width: 80px;
+    height: 80px;
+    display: block;
+    margin: 0 auto;
+}
+
+.card-attack {
+    text-align: center;
+    
+}
+
+.hand-card {
+    display: flex;
+    flex-direction: column;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; 
 }

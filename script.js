@@ -30,31 +30,36 @@ const cardSamples = [
         color: 'red',
         attack: 1,
         scoringFunctions: [redBoost],
-        endOfTurnFunctions: []
+        endOfTurnFunctions: [],
+        avatar: 'img/rat1.png'
     },
     {
         color: 'blue',
         attack: 2,
         scoringFunctions: [blueTopRowBoost],
-        endOfTurnFunctions: []
+        endOfTurnFunctions: [],
+        avatar: 'img/porc1.png'
     },
     {
         color: 'green',
         attack: 3,
         scoringFunctions: [],
-        endOfTurnFunctions: [greenGrow]
+        endOfTurnFunctions: [greenGrow],
+        avatar: 'img/turtle1.png'
     },
     {
         color: 'yellow',
         attack: 1,
         scoringFunctions: [yellowRowBoost],
-        endOfTurnFunctions: []
+        endOfTurnFunctions: [],
+        avatar: 'img/beaver1.png'
     },
     {
         color: 'purple',
         attack: 2,
         scoringFunctions: [],
-        endOfTurnFunctions: [purpleBoostAdjacent]
+        endOfTurnFunctions: [purpleBoostAdjacent],
+        avatar: 'img/mouse1.png'
     }
 ];
 
@@ -66,7 +71,8 @@ function createCardInstance(cardTemplate) {
         color: Array.isArray(cardTemplate.color) ? [...cardTemplate.color] : [cardTemplate.color],
         attack: cardTemplate.attack,
         scoringFunctions: cardTemplate.scoringFunctions ? [...cardTemplate.scoringFunctions] : [],
-        endOfTurnFunctions: cardTemplate.endOfTurnFunctions ? [...cardTemplate.endOfTurnFunctions] : []
+        endOfTurnFunctions: cardTemplate.endOfTurnFunctions ? [...cardTemplate.endOfTurnFunctions] : [],
+        avatar: cardTemplate.avatar // Include the avatar property
     };
 }
 
@@ -98,9 +104,11 @@ function createCurrentDeck() {
         color: [...cardInstance.color],
         attack: cardInstance.attack,
         scoringFunctions: [...cardInstance.scoringFunctions],
-        endOfTurnFunctions: [...cardInstance.endOfTurnFunctions]
+        endOfTurnFunctions: [...cardInstance.endOfTurnFunctions],
+        avatar: cardInstance.avatar // Include avatar property
     }));
 }
+
 
 // Function to draw a card from the deck to the hand
 function drawACard() {
@@ -313,6 +321,8 @@ function handleCardMerging() {
         // Combine colors
         higherAttackCard.color = [...new Set([...higherAttackCard.color, ...lowerAttackCard.color])];
 
+        const mergedAvatar = higherAttackCard.avatar
+
         // Remove lowerAttackCard from currentHand
         const lowerIndexInHand = state.currentHand.indexOf(lowerAttackCard);
         if (lowerIndexInHand !== -1) {
@@ -344,7 +354,8 @@ function handleCardMerging() {
             color: higherAttackCard.color,
             attack: higherAttackCard.attack,
             scoringFunctions: [...higherAttackCard.scoringFunctions],
-            endOfTurnFunctions: [...higherAttackCard.endOfTurnFunctions]
+            endOfTurnFunctions: [...higherAttackCard.endOfTurnFunctions],
+            avatar: mergedAvatar
         };
 
         // Add the merged card template to permanentDeck
@@ -409,68 +420,116 @@ function createEnemyInfoDivs() {
 }
 
 
-function renderGridSquare(value, index) {
+// 1. Create a function to handle empty squares
+function createEmptySquareDiv(index) {
     const square = document.createElement('div');
     square.classList.add('grid-square');
 
-    if (value === 0) {
-        if (state.status === 'placing-card') {
-            // Check if there's an enemy below this square
-            const row = Math.floor(index / 4);
-            const col = index % 4;
-            let hasEnemyBelow = false;
-            for (let r = row + 1; r < 4; r++) {
-                const enemy = state.enemies[col];
-                if (enemy && enemy.position === r) {
-                    hasEnemyBelow = true;
-                    break;
-                }
+    if (state.status === 'placing-card') {
+        // Check if there's an enemy below this square
+        const row = Math.floor(index / 4);
+        const col = index % 4;
+        let hasEnemyBelow = false;
+        for (let r = row + 1; r < 4; r++) {
+            const enemy = state.enemies[col];
+            if (enemy && enemy.position === r) {
+                hasEnemyBelow = true;
+                break;
             }
+        }
 
-            if (!hasEnemyBelow) {
-                square.style.backgroundColor = '#ccffcc'; // Light green
-                square.style.cursor = 'pointer';
+        if (!hasEnemyBelow) {
+            square.style.backgroundColor = '#ccffcc'; // Light green
+            square.style.cursor = 'pointer';
 
-                square.addEventListener('click', () => {
-                    const selectedCard = state.currentHand[state.selectedCardIndex];
-                    state.gameGrid[index] = selectedCard;
+            square.addEventListener('click', () => {
+                const selectedCard = state.currentHand[state.selectedCardIndex];
+                state.gameGrid[index] = selectedCard;
 
-                    state.currentHand.splice(state.selectedCardIndex, 1);
+                state.currentHand.splice(state.selectedCardIndex, 1);
 
-                    state.status = 'grid';
-                    state.selectedCardIndex = null;
+                state.status = 'grid';
+                state.selectedCardIndex = null;
 
-                    renderScreen();
-                });
-            } else {
-                square.style.backgroundColor = 'black';
-            }
+                renderScreen();
+            });
         } else {
             square.style.backgroundColor = 'black';
         }
-    } else if (value.type === 'card') {
-        // Calculate adjusted attack value using scoringFunctions
-        let cardAttack = value.attack;
-        if (Array.isArray(value.scoringFunctions)) {
-            for (let func of value.scoringFunctions) {
-                cardAttack += func(index);
-            }
-        }
-        // Handle gradient background
-        if (value.color.length > 1) {
-            square.style.background = `linear-gradient(to right, ${value.color.join(', ')})`;
-        } else {
-            square.style.backgroundColor = value.color[0];
-        }
-        square.textContent = cardAttack;
-    } else if (value.type === 'enemy') {
-        // Render enemy
-        square.style.backgroundColor = 'grey';
-        square.textContent = `E: ${value.currentHealth}`;
+    } else {
+        square.style.backgroundColor = 'black';
     }
 
     return square;
 }
+
+// 2. Create a function to handle card squares
+function createCardSquareDiv(card, index) {
+    const square = document.createElement('div');
+    square.classList.add('hand-card');
+
+    // Calculate adjusted attack value using scoringFunctions
+    let cardAttack = card.attack;
+    if (Array.isArray(card.scoringFunctions)) {
+        for (let func of card.scoringFunctions) {
+            cardAttack += func(index);
+        }
+    }
+
+    // Handle gradient background
+    if (card.color.length > 1) {
+        square.style.background = `linear-gradient(to right, ${card.color.join(', ')})`;
+    } else {
+        square.style.backgroundColor = card.color[0];
+    }
+
+    // Create avatar image element
+    const avatarImg = document.createElement('img');
+    avatarImg.src = card.avatar; // Ensure 'avatar' property exists in card objects
+    avatarImg.classList.add("card-avatar")
+
+
+    // Create attack text element
+    const attackText = document.createElement('div');
+    attackText.textContent = `${cardAttack}`;
+    attackText.style.textAlign = 'center';
+
+    // Append avatar and attack to square
+    square.appendChild(avatarImg);
+    square.appendChild(attackText);
+
+    return square;
+}
+
+// 3. Create a function to handle enemy squares
+function createEnemySquareDiv(enemy) {
+    const square = document.createElement('div');
+    square.classList.add('grid-square');
+
+    // Render enemy
+    square.style.backgroundColor = 'grey';
+    square.textContent = `E: ${enemy.currentHealth}`;
+
+    return square;
+}
+
+// 4. Modify the renderGridSquare function to use the new helper functions
+function renderGridSquare(value, index) {
+    if (value === 0) {
+        return createEmptySquareDiv(index);
+    } else if (value.type === 'card') {
+        return createCardSquareDiv(value, index);
+    } else if (value.type === 'enemy') {
+        return createEnemySquareDiv(value);
+    }
+
+    // Fallback for unexpected value types
+    const fallbackSquare = document.createElement('div');
+    fallbackSquare.classList.add('grid-square');
+    fallbackSquare.style.backgroundColor = 'black';
+    return fallbackSquare;
+}
+
 
 // Function to render the grid container
 function createGridContainer() {
@@ -551,9 +610,6 @@ function createEndTurnButton() {
     return endTurnButton;
 }
     
-
-
-// Function to render the hand area
 function createHandArea() {
     const handArea = document.createElement('div');
     handArea.id = 'hand-area';
@@ -562,26 +618,7 @@ function createHandArea() {
     handContainer.id = 'hand-container';
 
     state.currentHand.forEach((card, index) => {
-        const cardDiv = document.createElement('div');
-        cardDiv.classList.add('hand-card');
-        cardDiv.style.cursor = 'pointer';
-
-        // Handle gradient background for multiple colors
-        if (card.color.length > 1) {
-            cardDiv.style.background = `linear-gradient(to right, ${card.color.join(', ')})`;
-        } else {
-            cardDiv.style.backgroundColor = card.color[0];
-        }
-
-        cardDiv.textContent = card.attack;
-
-        cardDiv.addEventListener('click', () => {
-            state.status = 'placing-card';
-            state.selectedCardIndex = index;
-
-            renderScreen();
-        });
-
+        const cardDiv = createHandCardDiv(card, index);
         handContainer.appendChild(cardDiv);
     });
 
@@ -591,6 +628,43 @@ function createHandArea() {
     handArea.appendChild(endTurnButton);
 
     return handArea;
+}
+
+function createHandCardDiv(card, index) {
+    const cardDiv = document.createElement('div');
+    cardDiv.classList.add('hand-card');
+    cardDiv.style.cursor = 'pointer';
+
+    // Handle gradient background for multiple colors
+    if (card.color.length > 1) {
+        cardDiv.style.background = `linear-gradient(to right, ${card.color.join(', ')})`;
+    } else {
+        cardDiv.style.backgroundColor = card.color[0];
+    }
+
+    // Create avatar image element
+    const avatarImg = document.createElement('img');
+    avatarImg.src = card.avatar; // Ensure 'avatar' property exists in card objects
+    avatarImg.classList.add("card-avatar")
+
+    // Create attack text element
+    const attackText = document.createElement('div');
+    attackText.textContent = `${card.attack}`;
+    attackText.style.textAlign = 'center';
+
+    // Append avatar and attack to cardDiv
+    cardDiv.appendChild(avatarImg);
+    cardDiv.appendChild(attackText);
+
+    // Add click event listener to select the card for placement
+    cardDiv.addEventListener('click', () => {
+        state.status = 'placing-card';
+        state.selectedCardIndex = index;
+
+        renderScreen();
+    });
+
+    return cardDiv;
 }
 
 // Function to render the entire screen
