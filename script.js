@@ -61,31 +61,46 @@ const cardSamples = [
 
 function createCardInstance(cardTemplate) {
     return {
+        type: 'card',
         template: cardTemplate,
         color: Array.isArray(cardTemplate.color) ? [...cardTemplate.color] : [cardTemplate.color],
         attack: cardTemplate.attack,
-        scoringFunctions: [...cardTemplate.scoringFunctions],
-        endOfTurnFunctions: [...cardTemplate.endOfTurnFunctions]
+        scoringFunctions: cardTemplate.scoringFunctions ? [...cardTemplate.scoringFunctions] : [],
+        endOfTurnFunctions: cardTemplate.endOfTurnFunctions ? [...cardTemplate.endOfTurnFunctions] : []
     };
 }
 
+function initializeEnemies() {
+    state.enemies = state.enemies.map(enemy => {
+        if (enemy) {
+            return { ...enemy, position: -1 };
+        }
+        return null;
+    });
+}
+
 // Function to create a sample deck with 16 randomly chosen cards
-function createSampleDeck() {
+function initializePermanentDeck() {
     const deck = [];
-    for (let i = 0; i < 10; i++) {
+    // For example, give the player a starting deck of 20 cards
+    for (let i = 0; i < 20; i++) {
         const randomCardTemplate = cardSamples[Math.floor(Math.random() * cardSamples.length)];
         const cardInstance = createCardInstance(randomCardTemplate);
         deck.push(cardInstance);
     }
-    return deck;
+    state.permanentDeck = deck;
 }
 
-
-
-
-
-// Initialize the deck
-state.currentDeck = createSampleDeck();
+function createCurrentDeck() {
+    state.currentDeck = state.permanentDeck.map(cardInstance => ({
+        type: 'card',
+        template: cardInstance.template,
+        color: [...cardInstance.color],
+        attack: cardInstance.attack,
+        scoringFunctions: [...cardInstance.scoringFunctions],
+        endOfTurnFunctions: [...cardInstance.endOfTurnFunctions]
+    }));
+}
 
 // Function to draw a card from the deck to the hand
 function drawACard() {
@@ -171,34 +186,99 @@ function purpleBoostAdjacent(cardIndex) {
 
 
 // Function to calculate total attack
-function calculateScore() {
-    let totalScore = 0;
-    for (let index = 0; index < state.gameGrid.length; index++) {
-        const card = state.gameGrid[index];
-        if (card !== 0) {
-            let cardAttack = card.attack;
-            if (Array.isArray(card.scoringFunctions)) {
-                for (let func of card.scoringFunctions) {
-                    cardAttack += func(index);
+function calculateDamagePerColumn() {
+    const damagePerColumn = [0, 0, 0, 0];
+    for (let col = 0; col < 4; col++) {
+        for (let row = 0; row < 4; row++) {
+            const index = row * 4 + col;
+            const card = state.gameGrid[index];
+            if (card && card.type === 'card') {
+                let cardAttack = card.attack;
+                if (Array.isArray(card.scoringFunctions)) {
+                    for (let func of card.scoringFunctions) {
+                        cardAttack += func(index);
+                    }
                 }
+                damagePerColumn[col] += cardAttack;
             }
-            totalScore += cardAttack;
         }
     }
-    return totalScore;
+    return damagePerColumn;
 }
 
 function handleEndOfTurnEffects() {
     state.gameGrid.forEach((card, index) => {
-        if (card !== 0 && Array.isArray(card.endOfTurnFunctions)) {
+        if (card && card.type === 'card' && Array.isArray(card.endOfTurnFunctions)) {
             for (let func of card.endOfTurnFunctions) {
                 func(index);
             }
         }
     });
 
-    // Implement card merging logic
     handleCardMerging();
+}
+
+function handleEnemyActions() {
+    for (let col = 0; col < 4; col++) {
+        const enemy = state.enemies[col];
+        if (enemy) {
+            // Decrement turnsTilAttack
+            enemy.turnsTilAttack -= 1;
+
+            if (enemy.turnsTilAttack <= 0) {
+                const nextRow = enemy.position + 1;
+
+                if (nextRow < 4) {
+                    const index = nextRow * 4 + col;
+                    const target = state.gameGrid[index];
+
+                    if (target === 0) {
+                        // Move enemy down
+                        if (enemy.position >= 0) {
+                            state.gameGrid[enemy.position * 4 + col] = 0; // Clear current position
+                        }
+                        enemy.position = nextRow;
+                        state.gameGrid[index] = enemy;
+                        enemy.turnsTilAttack = enemy.initialTurnsTilAttack || enemy.turnsTilAttack; // Reset turnsTilAttack if needed
+                    } else if (target.type === 'card') {
+                        // Kill the player card
+                        removeCardFromGrid(index);
+
+                        // Remove the card from the player's permanent deck
+                        const cardIndex = state.permanentDeck.indexOf(target);
+                        if (cardIndex !== -1) {
+                            state.permanentDeck.splice(cardIndex, 1);
+                        }
+
+                        // Replace with enemy
+                        if (enemy.position >= 0) {
+                            state.gameGrid[enemy.position * 4 + col] = 0; // Clear current position
+                        }
+                        enemy.position = nextRow;
+                        state.gameGrid[index] = enemy;
+                        enemy.turnsTilAttack = enemy.initialTurnsTilAttack || enemy.turnsTilAttack; // Reset turnsTilAttack if needed
+                    }
+                } else {
+                    // Enemy has reached the bottom row
+                    state.defeated = true;
+                }
+            }
+        }
+    }
+}
+
+function removeCardFromGrid(index) {
+    const card = state.gameGrid[index];
+    if (card && card.type === 'card') {
+        // Remove from grid
+        state.gameGrid[index] = 0;
+
+        // Remove from permanentDeck
+        const cardIndex = state.permanentDeck.indexOf(card);
+        if (cardIndex !== -1) {
+            state.permanentDeck.splice(cardIndex, 1);
+        }
+    }
 }
 
 function handleCardMerging() {
@@ -245,16 +325,16 @@ function handleCardMerging() {
             state.currentDeck.splice(lowerIndexInDeck, 1);
         }
 
-        // Remove lowerAttackCard's template from permanentDeck
+        // Remove lowerAttackCard from permanentDeck
         const lowerTemplate = lowerAttackCard.template;
-        const lowerTemplateIndex = state.permanentDeck.indexOf(lowerTemplate);
+        const lowerTemplateIndex = state.permanentDeck.indexOf(lowerAttackCard);
         if (lowerTemplateIndex !== -1) {
             state.permanentDeck.splice(lowerTemplateIndex, 1);
         }
 
-        // Remove higherAttackCard's template from permanentDeck
+        // Remove higherAttackCard from permanentDeck
         const higherTemplate = higherAttackCard.template;
-        const higherTemplateIndex = state.permanentDeck.indexOf(higherTemplate);
+        const higherTemplateIndex = state.permanentDeck.indexOf(higherAttackCard);
         if (higherTemplateIndex !== -1) {
             state.permanentDeck.splice(higherTemplateIndex, 1);
         }
@@ -268,10 +348,15 @@ function handleCardMerging() {
         };
 
         // Add the merged card template to permanentDeck
-        state.permanentDeck.push(mergedCardTemplate);
+        const mergedCardInstance = createCardInstance(mergedCardTemplate);
+        state.permanentDeck.push(mergedCardInstance);
 
-        // Update higherAttackCard's template reference
+        // Update higherAttackCard's template reference and properties
         higherAttackCard.template = mergedCardTemplate;
+        higherAttackCard.color = mergedCardInstance.color;
+        higherAttackCard.attack = mergedCardInstance.attack;
+        higherAttackCard.scoringFunctions = [...mergedCardInstance.scoringFunctions];
+        higherAttackCard.endOfTurnFunctions = [...mergedCardInstance.endOfTurnFunctions];
 
         // Replace higherAttackCard in currentDeck with updated card
         const higherIndexInDeck = state.currentDeck.indexOf(higherAttackCard);
@@ -296,17 +381,26 @@ function createEnemyInfoDivs() {
     enemyInfoContainer.style.display = 'grid';
     enemyInfoContainer.style.gridTemplateColumns = 'repeat(4, 100px)';
     enemyInfoContainer.style.gridColumnGap = '5px';
+    enemyInfoContainer.style.marginBottom = '10px';
 
     for (let i = 0; i < 4; i++) {
         const enemyDiv = document.createElement('div');
         enemyDiv.classList.add('enemy-info');
+        enemyDiv.style.border = '1px solid #333';
+        enemyDiv.style.padding = '10px';
+        enemyDiv.style.textAlign = 'center';
+        enemyDiv.style.backgroundColor = '#f0f0f0';
 
         const enemy = state.enemies[i];
         if (enemy) {
-            const turnsLeft = enemy.turnsTilAttack - state.currentTurn + 1;
-            enemyDiv.textContent = `Enemy ${i + 1}\nHP: ${enemy.currentHealth}/${enemy.maxHealth}\nAttacks in: ${turnsLeft} turns`;
+            const turnsLeft = enemy.turnsTilAttack;
+            enemyDiv.innerHTML = `
+                <strong>Enemy ${i + 1}</strong><br>
+                HP: ${enemy.currentHealth}/${enemy.maxHealth}<br>
+                Turns Til Attack: ${turnsLeft}
+            `;
         } else {
-            enemyDiv.textContent = 'No Enemy';
+            enemyDiv.innerHTML = `<strong>Enemy ${i + 1}</strong><br>No Enemy`;
         }
 
         enemyInfoContainer.appendChild(enemyDiv);
@@ -314,31 +408,48 @@ function createEnemyInfoDivs() {
     return enemyInfoContainer;
 }
 
-// Function to render a grid square
+
 function renderGridSquare(value, index) {
     const square = document.createElement('div');
     square.classList.add('grid-square');
 
     if (value === 0) {
         if (state.status === 'placing-card') {
-            square.style.backgroundColor = '#ccffcc'; // Light green
-            square.style.cursor = 'pointer';
+            // Check if there's an enemy below this square
+            const row = Math.floor(index / 4);
+            const col = index % 4;
+            let hasEnemyBelow = false;
+            for (let r = row + 1; r < 4; r++) {
+                const enemy = state.enemies[col];
+                if (enemy && enemy.position === r) {
+                    hasEnemyBelow = true;
+                    break;
+                }
+            }
 
-            square.addEventListener('click', () => {
-                const selectedCard = state.currentHand[state.selectedCardIndex];
-                state.gameGrid[index] = selectedCard;
+            if (!hasEnemyBelow) {
+                square.style.backgroundColor = '#ccffcc'; // Light green
+                square.style.cursor = 'pointer';
 
-                state.currentHand.splice(state.selectedCardIndex, 1);
+                square.addEventListener('click', () => {
+                    const selectedCard = state.currentHand[state.selectedCardIndex];
+                    state.gameGrid[index] = selectedCard;
 
-                state.status = 'grid';
-                state.selectedCardIndex = null;
+                    state.currentHand.splice(state.selectedCardIndex, 1);
 
-                renderScreen();
-            });
+                    state.status = 'grid';
+                    state.selectedCardIndex = null;
+
+                    renderScreen();
+                });
+            } else {
+                square.style.backgroundColor = 'black';
+            }
         } else {
             square.style.backgroundColor = 'black';
         }
-    } else {
+    } else if (value.type === 'card') {
+        // Calculate adjusted attack value using scoringFunctions
         let cardAttack = value.attack;
         if (Array.isArray(value.scoringFunctions)) {
             for (let func of value.scoringFunctions) {
@@ -352,6 +463,10 @@ function renderGridSquare(value, index) {
             square.style.backgroundColor = value.color[0];
         }
         square.textContent = cardAttack;
+    } else if (value.type === 'enemy') {
+        // Render enemy
+        square.style.backgroundColor = 'grey';
+        square.textContent = `E: ${value.currentHealth}`;
     }
 
     return square;
@@ -379,44 +494,64 @@ function createEndTurnButton() {
     const endTurnButton = document.createElement('button');
     endTurnButton.id = 'end-turn-button';
 
-    const damage = calculateScore();
     endTurnButton.textContent = `End Turn & Attack`;
 
     endTurnButton.addEventListener('click', () => {
-    // For each column, calculate the damage and apply it to the corresponding enemy if any
-    for (let col = 0; col < 4; col++) {
-        const enemy = state.enemies[col];
-        if (enemy) {
-            let columnDamage = 0;
-            for (let row = 0; row < 4; row++) {
-                const index = row * 4 + col;
-                const card = state.gameGrid[index];
-                if (card !== 0) {
-                    let cardAttack = card.attack;
-                    if (Array.isArray(card.scoringFunctions)) {
-                        for (let func of card.scoringFunctions) {
-                            cardAttack += func(index);
-                        }
-                    }
-                    columnDamage += cardAttack;
-                }
+        // Calculate and apply damage to each enemy
+        const damagePerColumn = calculateDamagePerColumn();
+        for (let col = 0; col < 4; col++) {
+            const enemy = state.enemies[col];
+            if (enemy) {
+                enemy.currentHealth -= damagePerColumn[col];
+                if (enemy.currentHealth < 0) enemy.currentHealth = 0;
             }
-            enemy.currentHealth -= columnDamage;
-            if (enemy.currentHealth < 0) enemy.currentHealth = 0;
         }
-    }
 
-    state.currentTurn += 1;
+        // Remove enemies with HP <=0
+        for (let col = 0; col < 4; col++) {
+            const enemy = state.enemies[col];
+            if (enemy && enemy.currentHealth <= 0) {
+                // Clear the enemy from the grid if it's on the board
+                if (enemy.position >= 0 && enemy.position < 4) {
+                    const index = enemy.position * 4 + col;
+                    state.gameGrid[index] = 0;
+                }
+                state.enemies[col] = null;
+            }
+        }
 
-    // Handle end-of-turn effects
-    handleEndOfTurnEffects();
-    drawHand();
-    renderScreen();
-});
-    
+        // Check for victory
+        const activeEnemies = state.enemies.filter(enemy => enemy !== null);
+        if (activeEnemies.length === 0) {
+            alert('You defeated all enemies!');
+            // Handle victory (e.g., reset game or proceed to next level)
+            return;
+        }
+
+        // Handle enemy actions (decrement turnsTilAttack and attack/move)
+        handleEnemyActions();
+
+        // Check for defeat after enemy actions
+        if (state.defeated) {
+            alert('An enemy has broken through! You lose.');
+            // Handle defeat (e.g., reset game or display lose screen)
+            return;
+        }
+
+        // Handle end-of-turn effects
+        handleEndOfTurnEffects();
+
+        // Draw new hand
+        drawHand();
+
+        // Render the updated screen
+        renderScreen();
+    });
 
     return endTurnButton;
 }
+    
+
 
 // Function to render the hand area
 function createHandArea() {
@@ -472,6 +607,9 @@ function renderScreen() {
 }
 
 // Initial setup
+initializePermanentDeck()
+initializeEnemies();
+createCurrentDeck()
 drawHand();
 renderScreen();
 
