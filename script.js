@@ -17,10 +17,10 @@ const state = {
 
     // Enemy
     enemies: [
-        { maxHealth: 40, currentHealth: 40, turnsTilAttack: 5 },
-        { maxHealth: 45, currentHealth: 45, turnsTilAttack: 6 },
-        { maxHealth: 30, currentHealth: 30, turnsTilAttack: 4 },
-        { maxHealth: 20, currentHealth: 20, turnsTilAttack: 3 },
+    { maxHealth: 40, currentHealth: 40, turnsTilAttack: 5 }, // Column 0
+    null,                                                    // Column 1 has no enemy
+    { maxHealth: 50, currentHealth: 50, turnsTilAttack: 6 }, // Column 2
+    null                                                     // Column 3 has no enemy
     ],
 };
 
@@ -300,9 +300,15 @@ function createEnemyInfoDivs() {
     for (let i = 0; i < 4; i++) {
         const enemyDiv = document.createElement('div');
         enemyDiv.classList.add('enemy-info');
+
         const enemy = state.enemies[i];
-        const turnsLeft = enemy.turnsTilAttack - state.currentTurn + 1;
-        enemyDiv.textContent = `Enemy ${i + 1}\nHP: ${enemy.currentHealth}/${enemy.maxHealth}\nAttacks in: ${turnsLeft} turns`;
+        if (enemy) {
+            const turnsLeft = enemy.turnsTilAttack - state.currentTurn + 1;
+            enemyDiv.textContent = `Enemy ${i + 1}\nHP: ${enemy.currentHealth}/${enemy.maxHealth}\nAttacks in: ${turnsLeft} turns`;
+        } else {
+            enemyDiv.textContent = 'No Enemy';
+        }
+
         enemyInfoContainer.appendChild(enemyDiv);
     }
     return enemyInfoContainer;
@@ -374,28 +380,30 @@ function createEndTurnButton() {
     endTurnButton.id = 'end-turn-button';
 
     const damage = calculateScore();
-    endTurnButton.textContent = `End Turn (Deal ${damage} damage)`;
+    endTurnButton.textContent = `End Turn & Attack`;
 
     endTurnButton.addEventListener('click', () => {
-    // For each column, calculate the damage and apply it to the corresponding enemy
+    // For each column, calculate the damage and apply it to the corresponding enemy if any
     for (let col = 0; col < 4; col++) {
-        let columnDamage = 0;
-        for (let row = 0; row < 4; row++) {
-            const index = row * 4 + col;
-            const card = state.gameGrid[index];
-            if (card !== 0) {
-                let cardAttack = card.attack;
-                if (Array.isArray(card.scoringFunctions)) {
-                    for (let func of card.scoringFunctions) {
-                        cardAttack += func(index);
-                    }
-                }
-                columnDamage += cardAttack;
-            }
-        }
         const enemy = state.enemies[col];
-        enemy.currentHealth -= columnDamage;
-        if (enemy.currentHealth < 0) enemy.currentHealth = 0;
+        if (enemy) {
+            let columnDamage = 0;
+            for (let row = 0; row < 4; row++) {
+                const index = row * 4 + col;
+                const card = state.gameGrid[index];
+                if (card !== 0) {
+                    let cardAttack = card.attack;
+                    if (Array.isArray(card.scoringFunctions)) {
+                        for (let func of card.scoringFunctions) {
+                            cardAttack += func(index);
+                        }
+                    }
+                    columnDamage += cardAttack;
+                }
+            }
+            enemy.currentHealth -= columnDamage;
+            if (enemy.currentHealth < 0) enemy.currentHealth = 0;
+        }
     }
 
     state.currentTurn += 1;
