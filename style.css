@@ -1,79 +1,486 @@
-#grid-container {
-    display: grid;
-    grid-template-columns: repeat(4, 100px);
-    grid-template-rows: repeat(4, 100px);
-    gap: 5px;
-}
-
-.grid-square {
-    width: 100px;
-    height: 100px;
-    display: flex;
+#app {
+    background-image: url('img/terrain.png'); /* Path to your background image */
+    background-size: cover; /* Ensure the image covers the entire div */
+    background-position: center; /* Center the image */
+    background-repeat: no-repeat; 
+    width: 96vw;
+    height: 96vh; 
+    z-index: -1;
+    justify-content: start;
     align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-    border: 1px solid #333;
-}
-
-#hand-container {
     display: flex;
-    margin-top: 20px;
+    flex-direction: column;
 }
 
-.hand-card {
-    width: 100px;
-    height: 100px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-    margin-right: 10px;
-    border: 1px solid #333;
-    cursor: pointer; /* Cursor indicates clickable cards */
+.unit-attack-container {
+    width: 10vw;
+    height: 20vh;
 }
 
-/* Optional: Define a class for the light green squares */
-.grid-square.highlight {
-    background-color: #ccffcc; /* Light green */
+.bottom-button {
+    width: 30vw;
+    height: auto;
+    padding: 0.5vh;
+    margin-top: 3vh;
+    align-self: center;
     cursor: pointer;
 }
 
-#attack-sum {
-    margin-bottom: 10px;
-    font-size: 18px;
+.player-done {
+    background-color: rgb(215, 75, 103);
+    cursor: pointer;
+}
+
+.points-div {
+    background-color: rgba(75, 75, 75, 0.705);
+    color: white;
+    top: -5vh;
+    font-size: 2.6vmin;
+    position: relative;
+    z-index: 2,
+}
+
+.unit-selection:hover .points-div {
+    background-color: rgba(134, 149, 246, 0.705);
+    color: rgb(1, 1, 1);
+}
+
+.attack-bottom-row-div {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    height: 9vh;
+    width: 95vw;
+    margin: 2vw 0;;
+}
+
+.attack-bottom-div {
+    width: 45vw;
+    margin: 0 1vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    background-color: grey;
+    font-size: 3vmin;
+    color: white;
+}
+
+.attack-text-div {
+    font-size: 2.5vmin;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 2px;
+    width: 80vw; /* Adjust as needed */
+    height: 80vh; /* Adjust as needed */
+    margin: 0 auto;
+    z-index: 1;
+}
+
+.grid-cell {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.status-indicator {
+    position: absolute;
+    width: 3vmin;
+    height: 3vmin;
+    border-radius: 20%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2vmin;
     font-weight: bold;
 }
 
-#hand-area {
-    display: flex;
-    align-items: center;
-    margin-top: 20px;
+.stunned-indicator {
+    background-color: rgb(255, 255, 255);
+    color: rgb(218, 193, 3);
+    border: 1px solid black;
+    width: 3vmin;
+    height: 2vmin;
+    border-radius: 40%;
+    padding: 0;
+    top: 3vh;
+    left: -0.2vmin;
+    z-index: 1000;
 }
 
-#draw-hand-button {
-    margin-left: 20px;
-    padding: 10px 20px;
-    font-size: 16px;
+.stunned-indicator-buff {
+    background-color: rgb(42, 218, 29);
+    color: rgb(19, 17, 1);
+    border: 1px solid black;
+    padding: 0;
+    bottom: -0.2vmin;
+    left: -0.2vmin;
+    z-index: 100;
 }
 
-.card-avatar {
-    width: 80px;
-    height: 80px;
-    display: block;
-    margin: 0 auto;
+.marked-indicator-buff {
+    background-color: rgb(0, 0, 0);
+    color: rgb(254, 254, 254);
+    border: 1px solid black;
+    padding: 0;
+    height: 2.5vmin;
+    width: 4vmin;
+    top: -0.3vh;
+    left: 4vw;
+    z-index: 100;
 }
 
-.card-attack {
+.marked-indicator {
+    border-radius: 50%;
+    background-color: rgba(218, 29, 29, 0.709);
+    color: rgba(255, 255, 255, 0.805);
+    border: 2px solid rgba(255, 255, 255, 0.824);
+    padding: 0;
+    top: -0.3vh;
+    left: 4vw;
+    z-index: 10;
+}
+
+.grid-cell {
+    position: relative;
+    /* ... other existing styles ... */
+}
+
+
+
+.img-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.card-img-avatar {
+    width: 60%;
+    height: 60%;
+    object-fit: contain;
+}
+
+.health-text {
+    position: absolute;
+    bottom: 5px; /* Adjust as needed */
+    width: 100%;
     text-align: center;
-    
+    color: red;
+    font-size: 3vmin;
+    background-color: rgba(255, 255, 255, 0.7); /* Background for readability */
+    z-index: 3;
 }
 
-.hand-card {
+
+@keyframes glowBlue {
+    0% { 
+        background-color: rgba(255, 255, 255, 0.347);
+        box-shadow: 0 0 0.25vmin 0.25vmin blue;
+    }
+    50% { 
+        background-color: rgba(1, 244, 232, 0.591);
+        box-shadow: 0 0 0.5vmin 0.5vmin blue;
+    }
+    100% { 
+        background-color: rgba(255, 255, 255, 0.333);
+        box-shadow: 0 0 0.25vmin 0.25vmin blue;
+    }
+}
+
+.glow-blue {
+    animation: glowBlue 1s infinite;
+    cursor: pointer;
+}
+
+.glow-orange {
+    animation: glowOrange 1s infinite;
+}
+
+.glow-green {
+    animation: glowGreen 1s infinite;
+    cursor: pointer;
+}
+
+@keyframes glowRed {
+    0% {
+        background-color: red;
+        box-shadow: 0 0 2px 1px rgb(255, 0, 0); 
+    }
+    50% {
+        background-color: rgba(255, 0, 0, 0.694);
+        box-shadow: 0 0 10px 5px rgb(255, 0, 0, 0.7); 
+    }
+    100% {
+        background-color: red;
+        box-shadow: 0 0 2px 1px rgb(255, 0, 0); 
+    }
+}
+
+@keyframes glowOrange {
+    0% {
+        box-shadow: 0 0 5px 2px rgb(233, 124, 21); 
+    }
+    50% {
+        box-shadow: 0 0 20px 15px rgba(232, 222, 213, 0); 
+    }
+    100% {
+        box-shadow: 0 0 5px 2px rgb(233, 124, 21); 
+    }
+}
+
+@keyframes glowGreen {
+    0% {
+        box-shadow: 0 0 5px 2px rgb(8, 214, 42); 
+    }
+    50% {
+        box-shadow: 0 0 20px 1px rgba(213, 232, 217, 0.444); 
+    }
+    100% {
+        box-shadow: 0 0 5px 2px rgb(8, 214, 42) 
+    }
+}
+
+.glow-red {
+    animation: glowRed 1s infinite;
+    cursor: crosshair;
+}
+
+.attack-popup {
+    background-color: white;
+    border: 1px solid black;
+    padding: 2px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+}
+
+.attack-popup button {
+    margin: 0 1px;
+    padding: 1px;
+    font-size: 2vmin;
+    cursor: pointer;
+}
+
+.health-text {
+    position: absolute;
+    bottom: 5px; /* Adjust as needed */
+    width: 100%;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.7); /* Background for readability */
+}
+
+.points-tracker {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    color: rgb(141, 1, 1);
+    background-color: rgba(167, 167, 167, 0.68);
+    margin-bottom: 2vh;
+}
+
+.unit-selection-container {
+    height: 50vh;
+}
+
+.unit-selection-container, .current-army-selection-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.current-army-selection-container {
+    margin-top: 2vh;
+    border: 3px double white;
+    height: 25vh;
+    width: 80vw;
+}
+
+.unit-selection {
+    width: 10vw;
+    padding: 5px;
+    background-color: rgba(128, 128, 128, 0.403);
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.unit-selection:hover {
+    background-color: #f0f0f0;
+}
+
+.flash {
+    animation: flash 0.3s;
+}
+
+@keyframes flash {
+    0%, 100% { background-color: black; }
+    50% { background-color: white; }
+}
+
+.damage-animation {
+    animation: glow-red 0.5s ease-in-out;
+}
+
+@keyframes glow-red {
+    0% { background-color: black; }
+    50% { background-color: white }
+    100% { background-color: black }
+}
+.laser-beam {
+    position: absolute;
+    height: 0.45vh;
+    border: 0.5px dashed red;
+    background-color: red;
+    transform-origin: left center;
+}
+
+.taking-damage {
+    animation: takingDamage 0.3s;
+}
+
+@keyframes takingDamage {
+    0%, 100% { filter: drop-shadow(0 0 0 rgb(0, 0, 0)); }
+    50% { filter: drop-shadow(0 0 5px rgb(0, 0, 0));
+        filter: brightness(0) saturate(100%) invert(24%) sepia(86%) saturate(7483%) hue-rotate(358deg) brightness(107%) contrast(118%); }
+}
+
+.duck {
+    animation: duck 0.3s;
+}
+
+@keyframes duck {
+    0%, 100% { transform: translateX(0); }
+    10% { transform: translateX(-20px); }
+}
+
+.powerful-weapon-div {
+    width: 85vw;
+    height: auto;
+    margin: 0.1vmin;
+    padding: 0.5vmin;
+    font-size: 4vmin;
+    border: 2px solid gold;
+    border-radius: 5px;
+    margin-bottom: 2vh;
+    background-color: #f0f0f0;
+}
+
+.powerful-weapon-div p, .attack-div p {
+    margin: 1px;
+}
+
+.weapon-selection-title {
+    color: white;
+    margin: 0;
+    font-size: 5vmin;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.unit-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.unit-attack-container {
+    display: flex;
+    width: 98vw;
+    height: 40vh;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.unit-div {
+    width: 15vw;
+    height: 35vh;
     display: flex;
     flex-direction: column;
-    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; 
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 3.5px;
+    background-color: #f9f9f9;
 }
+
+.unit-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.attacks-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    overflow-y: auto;
+    max-height: calc(20vh - 100px);
+}
+
+.attack-div {
+    width: 100%;
+    height: 30%;
+    padding: 0.2vmin;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 1.7vmin;
+    transition: background-color 0.3s;
+}
+
+.attack-div:hover {
+    background-color: #e0e0e0;
+}
+
+h4 {
+    margin: 0;
+}
+
+.confirmation-popup {
+    position: fixed;
+    top: 4vh;
+    width: 90vw;
+    left: 5vw;
+     background-color: white;
+     color: grey;
+     z-index: 2;
+     font-size: 4vmin;
+}
+
+.glow-blue-selected {
+    animation: glowBlueSelected 1s infinite;
+}
+
+@keyframes glowBlueSelected {
+    0% { 
+        background-color: rgba(0, 0, 255, 0.2);
+        box-shadow: 0 0 5px 2px rgba(0, 0, 255, 0.4);
+    }
+    50% { 
+        background-color: rgba(0, 0, 255, 0.3);
+        box-shadow: 0 0 10px 4px rgba(0, 0, 255, 0.6);
+    }
+    100% { 
+        background-color: rgba(0, 0, 255, 0.2);
+        box-shadow: 0 0 5px 2px rgba(0, 0, 255, 0.4);
+    }
+}
+
+
+
