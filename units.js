@@ -138,7 +138,7 @@ const opponentWarrior3 = new Lieutenant(false, 6, "red", opponentLocations[2]);
 const opponentWarrior4 = new BasicWarrior(false, 7, "red", opponentLocations[3]);
 
 let playerArray = [playerWarrior2, playerWarrior4]
-let opponentArray = [opponentWarrior1, opponentWarrior2, opponentWarrior3, opponentWarrior4]
+let opponentArray = [opponentWarrior1, opponentWarrior3, opponentWarrior4]
 
 const powerfulWeapons = [
     {

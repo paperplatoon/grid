@@ -34,18 +34,21 @@ class BasicWarrior {
                 }
             },
             {
-                name: "Aim Dart - 1",
+                name: "Beanbag Round - 1",
                 range: 6,
                 accuracyModifier: 0.1,
                 damage: 1,
-                mark: 1,
+                pushSquares: 1,
                 execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
-                    stateObj = await applyMark(stateObj, targetIndex, attack.mark, isPlayerOwned);
                     stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
+                    stateObj = await pushBackwards(stateObj, targetIndex, attack.pushSquares, attackingUnit.currentSquare, isPlayerOwned);
                     return stateObj
                 },
                 text: function() {
-                    let textString = "Deal " + this.damage + " damage. Apply " + this.mark + ".  High accuracy. Long range"
+                    let textString = "Deal " + this.damage + " damage. Push backwards " + this.pushSquares + "square"
+                    if (this.pushSquares > 1) {
+                        textString += "s"
+                    }
                     return textString
                 }
             },

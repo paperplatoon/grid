@@ -151,7 +151,6 @@ async function executeAttack(stateObj, attackIndex, targetIndex) {
     if (hit || !(attack.accuracyModifier > 0)) {
         stateObj = await attack.execute(stateObj, targetIndex, attack, attacker, true);
     }
-
     return stateObj;
 }
 
@@ -249,13 +248,18 @@ function getUnitActionSquares(unit, gridSize) {
     const currentRow = Math.floor(unit.currentSquare / gridSize);
     const currentCol = unit.currentSquare % gridSize;
 
-    getSquaresInRange(currentRow, currentCol, unit.movementSquares, gridSize, movableSquares);
-    unit.attacks.forEach(attack => {
-        if (!attack.buff) {
-            getSquaresInRange(currentRow, currentCol, attack.range, gridSize, attackRangeSquares);
-        }
-    });
+    if (!unit.unitMovedThisTurn) {
+        getSquaresInRange(currentRow, currentCol, unit.movementSquares, gridSize, movableSquares);
+    }
 
+    if (!unit.unitAttackedThisTurn) {
+        unit.attacks.forEach(attack => {
+            if (!attack.buff) {
+                getSquaresInRange(currentRow, currentCol, attack.range, gridSize, attackRangeSquares);
+            }
+        });
+    }
+    
     return { 
         movableSquares: Array.from(movableSquares), 
         attackRangeSquares: Array.from(attackRangeSquares)
@@ -334,5 +338,59 @@ function getBestAttack(enemy, target) {
     return enemy.attacks.reduce((best, current) => 
         current.damage > best.damage ? current : best
     , enemy.attacks[0]);
+}
+
+async function pushBackwards(stateObj, targetIndex, squares, attackerSquare, isPlayer) {
+    console.log("pushing backwards " + squares)
+    return immer.produce(stateObj, draft => {
+        const targetUnit = isPlayer ? draft.opponentArmy[targetIndex] : draft.playerArmy[targetIndex];
+        const targetSquare = targetUnit.currentSquare;
+        
+        // Calculate current positions and deltas
+        const targetRow = Math.floor(targetSquare / draft.gridSize);
+        const targetCol = targetSquare % draft.gridSize;
+        const attackerRow = Math.floor(attackerSquare / draft.gridSize);
+        const attackerCol = attackerSquare % draft.gridSize;
+        
+        const rowDiff = Math.abs(targetRow - attackerRow);
+        const colDiff = Math.abs(targetCol - attackerCol);
+        
+        // Calculate push direction based on relative distances
+        let newRow = targetRow;
+        let newCol = targetCol;
+        
+        // If the vertical distance is significantly larger, push vertically
+        if (rowDiff > colDiff * 1.5) {
+            const pushDirection = targetRow > attackerRow ? 1 : -1;
+            newRow = targetRow + (pushDirection * squares);
+        }
+        // If the horizontal distance is significantly larger, push horizontally
+        else if (colDiff > rowDiff * 1.5) {
+            const pushDirection = targetCol > attackerCol ? 1 : -1;
+            newCol = targetCol + (pushDirection * squares);
+        }
+        // If distances are similar, push diagonally
+        else {
+            const rowDirection = targetRow > attackerRow ? 1 : -1;
+            const colDirection = targetCol > attackerCol ? 1 : -1;
+            newRow = targetRow + (rowDirection * squares);
+            newCol = targetCol + (colDirection * squares);
+        }
+
+        // Ensure new position is within grid bounds
+        newRow = Math.max(0, Math.min(draft.gridSize - 1, newRow));
+        newCol = Math.max(0, Math.min(draft.gridSize - 1, newCol));
+        
+        // Calculate new square index
+        const newSquare = (newRow * draft.gridSize) + newCol;
+        
+        console.log("old index was " + targetUnit.currentSquare + " and new index is " + newSquare)
+        // Only move if the new square is empty
+        if (draft.grid[newSquare] === 0) {
+            draft.grid[targetSquare] = 0;
+            targetUnit.currentSquare = newSquare;
+            draft.grid[newSquare] = targetUnit;
+        }
+    });
 }
 

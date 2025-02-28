@@ -82,6 +82,11 @@ function renderGrid(stateObj) {
     }
 }
 
+function unitIsSelected(stateObj, unitIndex) {
+    let attackRowDiv = createUnitAttacksDiv(stateObj.playerArmy[stateObj.selectedUnitIndex]);
+
+}
+
 async function renderGlowingSquares(stateObj) {
     const appDiv = document.getElementById('app');
     appDiv.innerHTML = ''; // Clear existing content
@@ -243,18 +248,52 @@ function swapAttack(stateObj, unitIndex, attackIndex) {
   }
 
 function handleCellClick(stateObj, index) {
-    const clickedUnit = stateObj.playerArmy.find(unit => unit.currentSquare === index);
-    if (clickedUnit && (!clickedUnit.unitMovedThisTurn || !clickedUnit.unitAttackedThisTurn)) {
-        stateObj = whenUnitClicked(stateObj, clickedUnit);
-        //allow buffs
-        if (!clickedUnit.unitMovedThisTurn || (!clickedUnit.unitAttackedThisTurn && (stateObj.attackRangeSquares.length > 0 || stateObj.buffableSquares.length > 0 ))) {
+    const clickedUnit = stateObj.grid[index];
+    
+    // If clicked on a player unit
+    if (clickedUnit !== 0 && clickedUnit.playerOwned) {
+        // Always select the clicked unit, even if another unit was already selected
+        if (!clickedUnit.unitMovedThisTurn || !clickedUnit.unitAttackedThisTurn) {
+        
+            stateObj = whenUnitClicked(stateObj, clickedUnit);
+        
+        // Only allow interaction if the unit hasn't completed all its actions
             stateObj = immer.produce(stateObj, draft => {
+                console.log("current selected index is " + draft.selectedUnitIndex + " and you clicked on " + index)
                 draft.selectedUnitIndex = draft.playerArmy.indexOf(clickedUnit);
                 draft.currentScreen = "chooseSquareToMove";
             });
         }
+        console.log("current selected index ahs been changed to  " + stateObj.selectedUnitIndex)
         renderScreen(stateObj);
+        return;
     }
+    
+    // Check if clicked on an enemy unit and a player unit is selected
+    const clickedEnemyUnit = stateObj.opponentArmy.find(unit => unit.currentSquare === index);
+    if (clickedEnemyUnit && stateObj.selectedUnitIndex !== null) {
+        const selectedUnit = stateObj.playerArmy[stateObj.selectedUnitIndex];
+        
+        // Check if the selected unit can attack and hasn't attacked this turn
+        if (!selectedUnit.unitAttackedThisTurn) {
+            // Check if the enemy is in attack range
+            const { attackRangeSquares } = getUnitActionSquares(selectedUnit, stateObj.gridSize);
+            const enemyInRange = attackRangeSquares.includes(index) && 
+                                stateObj.opponentArmy.some(enemy => enemy.currentSquare === index);
+            
+            if (enemyInRange) {
+                stateObj = prepareAttack(stateObj, index, true);
+                renderScreen(stateObj);
+                if (stateObj.showAttackPopup) {
+                    renderAttackPopup(stateObj);
+                }
+                return stateObj;
+            }
+        }
+    }
+    
+    // Handle other clicks (movement, etc.)
+    return handleMoveToSquare(stateObj, index);
 }
 
 async function handleAttackButtonClick(stateObj, attackOptionsIndex) {
@@ -268,25 +307,58 @@ async function handleAttackButtonClick(stateObj, attackOptionsIndex) {
     }
 
     stateObj = await executeAttack(stateObj, attackIndex, targetIndex);
-    stateObj = setBackToNormal(stateObj);
+    //if unit has already moved, set back to normal
+
+    if (selectedUnit.unitMovedThisTurn) {
+        stateObj = setBackToNormal(stateObj);
+    } else {
+        stateObj = immer.produce(stateObj, draft => {
+            draft.attackRangeSquares = [];
+        })
+    }
     stateObj = updateState(stateObj)
     return stateObj
 }
 
 async function handleMoveToSquare(stateObj, index) {
+    console.log("you clicked on index " + index)
+    const movingUnit = stateObj.playerArmy[stateObj.selectedUnitIndex]
 
     if (canMoveToSquare(stateObj, index)) {
         stateObj = await moveUnitToSquare(stateObj, index);
-        stateObj = clearSelectionAndGlowingSquares(stateObj)
+        stateObj = clearMovementSquares(stateObj)
+        if (!unitHasActionsLeft(movingUnit)) {
+            stateObj = setBackToNormal(stateObj)
+        }
     } else if (canAttackSquare(stateObj, index)) {
         stateObj = prepareAttack(stateObj, index, true);
     } else if (canBuffUnit(stateObj, index)) {
         stateObj = prepareAttack(stateObj, index, false);
-    }else {
-        stateObj = setBackToNormal(clearSelectionAndGlowingSquares(stateObj));
+    } else if (stateObj.grid[index].playerOwned && unitHasActionsLeft(movingUnit)) {
+        stateObj = selectThisUnit(stateObj, index);
+    } else {
+        stateObj = setBackToNormal(clearMovementSquares(stateObj));
     }
     stateObj= updateState(stateObj)
     return stateObj
+}
+
+function unitHasActionsLeft(unit) {
+    return (!unit.unitAttackedThisTurn || !unit.unitMovedThisTurn)
+}
+
+
+function selectThisUnit(stateObj, index) {
+    return immer.produce(stateObj, draft => {
+        
+        draft.selectedUnitIndex = draft.playerArmy.findIndex(unit => unit.currentSquare === index)
+        const { movableSquares, attackRangeSquares } = getUnitActionSquares(draft.playerArmy[draft.selectedUnitIndex], draft.gridSize);
+        draft.attackRangeSquares = attackRangeSquares.filter(square => 
+            square >= 0 && square < draft.grid.length && 
+            draft.opponentArmy.some(enemy => enemy.currentSquare === square)
+        );
+        draft.movableSquares = movableSquares.filter(square => !draft.playerArmy.some(unit => unit.currentSquare == square))
+    })
 }
 
 function canMoveToSquare(stateObj, index) {
@@ -301,10 +373,41 @@ async function moveUnitToSquare(stateObj, index) {
         const oldSquare = selectedUnit.currentSquare;
         draft.grid[oldSquare] = 0;
         selectedUnit.currentSquare = index;
-        draft.grid[index] = selectedUnit.color;
+        draft.grid[index] = selectedUnit;
         selectedUnit.unitMovedThisTurn = true;
-        // Keep the unit selected
-        draft.currentScreen = "normalScreen";
+        
+        // Keep the unit selected after moving
+        // Instead of changing to normalScreen, keep it in chooseSquareToMove
+        // so the player can still see attack options
+        draft.currentScreen = "chooseSquareToMove";
+        
+        // Update the movable squares (clear them since unit has moved)
+        draft.movableSquares = [];
+        
+        // Recalculate attack ranges from the new position
+        if (!selectedUnit.unitAttackedThisTurn) {
+            const { attackRangeSquares } = getUnitActionSquares(selectedUnit, draft.gridSize);
+        
+            // Only include enemy squares in range
+            draft.attackRangeSquares = attackRangeSquares.filter(square => 
+                square >= 0 && square < draft.grid.length && 
+                draft.opponentArmy.some(enemy => enemy.currentSquare === square)
+            );
+        } else {
+            //if unit has already attacked, then deselect the unit
+            draft.attackRangeSquares = []
+            draft.selectedUnitIndex = null
+        }
+        
+        
+        // Recalculate buffable squares if needed
+        draft.buffableSquares = [];
+        selectedUnit.attacks.forEach(attack => {
+            if (attack.buff) {
+                const buffableSquares = getBuffableSquares(selectedUnit, attack, draft);
+                draft.buffableSquares.push(...buffableSquares);
+            }
+        });
     });
 }
 
@@ -340,10 +443,9 @@ function getValidAttacks(unit, targetIndex) {
     return unit.attacks.filter(attack => distance <= attack.range);
 }
 
-function clearSelectionAndGlowingSquares(stateObj) {
+function clearMovementSquares(stateObj) {
     return immer.produce(stateObj, draft => {
         draft.movableSquares = [];
-        draft.attackRangeSquares = [];
     });
 }
 
@@ -395,6 +497,7 @@ function renderScreen(stateObj) {
       "weaponSelectionScreen": renderWeaponSelectionScreen,
     };
   
+    console.log("rendering screen " + stateObj.currentScreen)
     const renderer = screenRenderers[stateObj.currentScreen];
     if (renderer) {
       renderer(stateObj);
@@ -677,7 +780,7 @@ function moveAwayFromAllUnits(draft, enemy) {
 }
 
 function whenUnitClicked(stateObj, unit) {
-    if (!unit.playerOwned || (unit.unitMovedThisTurn && unit.unitAttackedThisTurn)) return stateObj;
+    if (!unit.playerOwned || !unitHasActionsLeft(unit)) return stateObj;
 
     return immer.produce(stateObj, draft => {
         // Clear any previous selected unit glow

@@ -196,7 +196,7 @@ function createGridCell(cell, index, stateObj) {
     
     // First check if this is the selected unit's cell
     const isSelectedUnit = stateObj.selectedUnitIndex !== null && 
-                         stateObj.playerArmy[stateObj.selectedUnitIndex]?.currentSquare === index;
+                         stateObj.playerArmy[stateObj.selectedUnitIndex].currentSquare === index;
     
     if (isSelectedUnit) {
         cellDiv.classList.add('glow-blue-selected');
