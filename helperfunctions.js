@@ -360,12 +360,12 @@ async function pushBackwards(stateObj, targetIndex, squares, attackerSquare, isP
         let newCol = targetCol;
         
         // If the vertical distance is significantly larger, push vertically
-        if (rowDiff > colDiff * 1.5) {
+        if (rowDiff > colDiff * 2) {
             const pushDirection = targetRow > attackerRow ? 1 : -1;
             newRow = targetRow + (pushDirection * squares);
         }
         // If the horizontal distance is significantly larger, push horizontally
-        else if (colDiff > rowDiff * 1.5) {
+        else if (colDiff > rowDiff * 2) {
             const pushDirection = targetCol > attackerCol ? 1 : -1;
             newCol = targetCol + (pushDirection * squares);
         }
@@ -390,6 +390,113 @@ async function pushBackwards(stateObj, targetIndex, squares, attackerSquare, isP
             draft.grid[targetSquare] = 0;
             targetUnit.currentSquare = newSquare;
             draft.grid[newSquare] = targetUnit;
+        }
+    });
+}
+
+async function pullCloser(stateObj, targetIndex, squares, attackerSquare, isPlayer) {
+    console.log("pulling closer by " + squares + " squares");
+    return immer.produce(stateObj, draft => {
+        const targetUnit = isPlayer ? draft.opponentArmy[targetIndex] : draft.playerArmy[targetIndex];
+        const targetSquare = targetUnit.currentSquare;
+        
+        // Calculate current positions
+        const targetRow = Math.floor(targetSquare / draft.gridSize);
+        const targetCol = targetSquare % draft.gridSize;
+        const attackerRow = Math.floor(attackerSquare / draft.gridSize);
+        const attackerCol = attackerSquare % draft.gridSize;
+        
+        const rowDiff = targetRow - attackerRow;
+        const colDiff = targetCol - attackerCol;
+        
+        // Determine movement direction
+        let rowDirection = 0;
+        let colDirection = 0;
+        
+        // If the vertical distance is significantly larger, pull vertically
+        if (Math.abs(rowDiff) > Math.abs(colDiff) * 2) {
+            rowDirection = rowDiff > 0 ? -1 : 1; // Move toward attacker
+        }
+        // If the horizontal distance is significantly larger, pull horizontally
+        else if (Math.abs(colDiff) > Math.abs(rowDiff) * 2) {
+            colDirection = colDiff > 0 ? -1 : 1; // Move toward attacker
+        }
+        // If distances are similar, pull diagonally
+        else {
+            rowDirection = rowDiff > 0 ? -1 : 1; // Move toward attacker row
+            colDirection = colDiff > 0 ? -1 : 1; // Move toward attacker column
+        }
+        
+        // Check along the path square by square and stop at first obstacle
+        let finalRow = targetRow;
+        let finalCol = targetCol;
+        let obstacleFound = false;
+        
+        for (let step = 1; step <= squares; step++) {
+            const checkRow = targetRow + (rowDirection * step);
+            const checkCol = targetCol + (colDirection * step);
+            
+            // Check if in bounds
+            if (checkRow < 0 || checkRow >= draft.gridSize || 
+                checkCol < 0 || checkCol >= draft.gridSize) {
+                break; // Hit boundary
+            }
+            
+            const checkSquare = (checkRow * draft.gridSize) + checkCol;
+            
+            // Stop if we reach the attacker's square
+            if (checkSquare === attackerSquare) {
+                // If this is the first step, we are adjacent, so don't move
+                if (step === 1) {
+                    console.log("Already adjacent to attacker, no movement needed");
+                    return;
+                }
+                
+                // Otherwise use the previous valid position
+                finalRow = targetRow + (rowDirection * (step - 1));
+                finalCol = targetCol + (colDirection * (step - 1));
+                obstacleFound = true;
+                break;
+            }
+            
+            // Check if the square is occupied
+            if (draft.grid[checkSquare] !== 0) {
+                // If we hit an obstacle on the first step, we can't move
+                if (step === 1) {
+                    console.log("Blocked by obstacle at first step, no movement possible");
+                    return;
+                }
+                
+                // Otherwise use the previous valid position
+                finalRow = targetRow + (rowDirection * (step - 1));
+                finalCol = targetCol + (colDirection * (step - 1));
+                obstacleFound = true;
+                break;
+            }
+            
+            // This square is valid, update final position
+            finalRow = checkRow;
+            finalCol = checkCol;
+        }
+        
+        // If we didn't find an obstacle, use the maximum calculated position
+        if (!obstacleFound && squares > 0) {
+            // Make sure final position is within bounds (redundant but safe)
+            finalRow = Math.max(0, Math.min(draft.gridSize - 1, finalRow));
+            finalCol = Math.max(0, Math.min(draft.gridSize - 1, finalCol));
+        }
+        
+        // Calculate final square index
+        const finalSquare = (finalRow * draft.gridSize) + finalCol;
+        
+        // Only move if the final position is different and empty
+        if (finalSquare !== targetSquare && draft.grid[finalSquare] === 0) {
+            console.log("Moving from " + targetSquare + " to " + finalSquare);
+            draft.grid[targetSquare] = 0;
+            targetUnit.currentSquare = finalSquare;
+            draft.grid[finalSquare] = targetUnit;
+        } else {
+            console.log("No movement possible or already at destination");
         }
     });
 }

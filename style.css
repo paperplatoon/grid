@@ -78,6 +78,7 @@
     height: 80vh; /* Adjust as needed */
     margin: 0 auto;
     z-index: 1;
+    border: 2px solid white;
 }
 
 .grid-cell {
@@ -89,6 +90,7 @@
     align-items: center;
     overflow: hidden;
     position: relative;
+    border: 0.5px dotted rgb(59, 59, 59);
 }
 
 .status-indicator {

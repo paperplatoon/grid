@@ -22,7 +22,7 @@ class BasicWarrior {
             {
                 name: "Rifle Shot - 2",
                 range: 5,
-                accuracyModifier: 0.15,
+                accuracyModifier: 0.12,
                 damage: 2,
                 execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
                     stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
@@ -36,7 +36,7 @@ class BasicWarrior {
             {
                 name: "Beanbag Round - 1",
                 range: 6,
-                accuracyModifier: 0.1,
+                accuracyModifier: 0.08,
                 damage: 1,
                 pushSquares: 1,
                 execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
@@ -73,16 +73,18 @@ class Shotgunner extends BasicWarrior {
 
         this.attacks = [
             {
-                name: "Pistol Shot - 1",
-                range: 4,
-                accuracyModifier: 0.1,
+                name: "Grappling Hook - 1",
+                range: 5,
+                accuracyModifier: 0.05,
                 damage: 1,
+                pullSquares: 2,
                 execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
                     stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
+                    stateObj = await pullCloser(stateObj, targetIndex, attack.pullSquares, attackingUnit.currentSquare, isPlayerOwned)
                     return stateObj
                 },
                 text: function() {
-                    let textString = "Deal " + this.damage + " damage.  High accuracy. Medium range"
+                    let textString = "Deal " + this.damage + " damage.  Pull enemy " + this.pullSquares + " closer"
                     return textString
                 }
             },
