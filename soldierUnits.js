@@ -1,3 +1,177 @@
+class basicSniper {
+    constructor(isPlayerOwned = true, id = 0, color = "white", unitCurrentSquare = 0) {
+        this.health = 3;
+        this.maxHealth = 3;
+        this.points = 3;
+        this.name = "Sniper"
+        this.leader = false;
+        this.movementSquares = 2;
+        this.playerOwned = isPlayerOwned;
+        this.color = color;
+        this.unitMovedThisTurn = false;
+        this.unitAttackedThisTurn = false;
+        this.moveTowardsClosestEnemy = false;
+        this.currentSquare = unitCurrentSquare;
+        this.id = id;
+        this.movement = "moveTowardsLeader";
+        this.mark = 0;
+        this.accuracy=0;
+        this.img = 'img/samurai.png';
+        this.attacks = [
+            {
+                name: "Rifle Shot - 2",
+                range: 5,
+                accuracyModifier: 0.05,
+                damage: 2,
+                execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
+                    stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
+                    return stateObj;
+                },
+                text: function() {
+                    return textString
+                }
+            },
+            {
+                name: "Beanbag Round - 1",
+                range: 6,
+                accuracyModifier: 0.04,
+                damage: 1,
+                pushSquares: 2,
+                execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
+                    stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
+                    stateObj = await pushBackwards(stateObj, targetIndex, attack.pushSquares, attackingUnit.currentSquare, isPlayerOwned);
+                    return stateObj
+                },
+                text: function() {
+                    let textString = "Push target backwards " + this.pushSquares + "square"
+                    if (this.pushSquares > 1) {
+                        textString += "s"
+                    }
+                    return textString
+                }
+            },
+        ];
+    }
+}
+
+class basicShotgunner {
+    constructor(isPlayerOwned = true, id = 0, color = "white", unitCurrentSquare = 0) {
+        this.health = 4;
+        this.maxHealth = 4;
+        this.points = 3;
+        this.name = "Shotgunner"
+        this.leader = false;
+        this.movementSquares = 3;
+        this.playerOwned = isPlayerOwned;
+        this.color = color;
+        this.unitMovedThisTurn = false;
+        this.unitAttackedThisTurn = false;
+        this.moveTowardsClosestEnemy = false;
+        this.currentSquare = unitCurrentSquare;
+        this.id = id;
+        this.movement = "moveTowardsLeader";
+        this.mark = 0;
+        this.accuracy=0;
+        this.img = 'img/shotgun.png';
+        this.attacks = [
+            {
+                name: "Shotgun Blast - 3",
+                range: 3,
+                accuracyModifier: 0.15,
+                damage: 3,
+                execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
+                    stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
+                    return stateObj;
+                },
+                text: function() {
+                    return textString
+                }
+            },
+            {
+                name: "Grapple Dart - 1",
+                range: 6,
+                accuracyModifier: 0.05,
+                damage: 1,
+                pullSquares: 1,
+                execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
+                    stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
+                    stateObj = await pullCloser(stateObj, targetIndex, attack.pullSquares, attackingUnit.currentSquare, isPlayerOwned)
+                    return stateObj
+                },
+                text: function() {
+                    let textString = "Pull target " + this.pullSquares + " squares closer"
+                    return textString
+                }
+            },
+        ];
+    }
+}
+
+class basicGrenadier {
+    constructor(isPlayerOwned = true, id = 0, color = "white", unitCurrentSquare = 0) {
+        this.health = 3;
+        this.maxHealth = 3;
+        this.points = 4;
+        this.name = "Grenadier"
+        this.leader = false;
+        this.movementSquares = 2;
+        this.playerOwned = isPlayerOwned;
+        this.color = color;
+        this.unitMovedThisTurn = false;
+        this.unitAttackedThisTurn = false;
+        this.moveTowardsClosestEnemy = false;
+        this.currentSquare = unitCurrentSquare;
+        this.id = id;
+        this.movement = "moveTowardsLeader";
+        this.mark = 0;
+        this.accuracy=0;
+        this.img = 'img/grenadier.png';
+        this.attacks = [
+            {
+                name: "Shotgun Blast - 3",
+                range: 3,
+                accuracyModifier: 0.15,
+                damage: 3,
+                execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
+                    stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
+                    return stateObj;
+                },
+                text: function() {
+                    return textString
+                }
+            },
+            {
+                name: "Frag Grenade",
+                range: 4,         // How far the unit can throw the grenade
+                damage: 2,        // Damage per unit affected
+                aoeRange: 1,      // 1 square radius around impact point
+                accuracyModifier: 0.06,
+                execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayer) => {
+                    const targetSquare = isPlayer 
+                        ? stateObj.opponentArmy[targetIndex].currentSquare 
+                        : stateObj.playerArmy[targetIndex].currentSquare;
+                    
+                    console.log("Executing grenade attack at grid square", targetSquare);
+                    
+                    // Apply AOE damage directly - no need to call the animation separately
+                    // as it's now integrated into the damage function
+                    stateObj = await applyAOEDamage(
+                        stateObj, 
+                        targetSquare, 
+                        attack, 
+                        isPlayer, 
+                        attack.aoeRange
+                    );
+                    
+                    return stateObj;
+                },
+                text: function() {
+                    return `Throw a grenade dealing ${this.damage} damage to all units within ${this.aoeRange} squares of impact.`;
+                }
+            }
+        ];
+    }
+}
 
 class BasicWarrior {
     constructor(isPlayerOwned = true, id = 0, color = "white", unitCurrentSquare = 0) {
@@ -34,21 +208,18 @@ class BasicWarrior {
                 }
             },
             {
-                name: "Beanbag Round - 1",
-                range: 6,
-                accuracyModifier: 0.08,
+                name: "Grappling Hook - 1",
+                range: 5,
+                accuracyModifier: 0.05,
                 damage: 1,
-                pushSquares: 1,
+                pullSquares: 1,
                 execute: async (stateObj, targetIndex, attack, attackingUnit, isPlayerOwned) => {
                     stateObj = await applyDamage(stateObj, targetIndex, attack, attackingUnit.currentSquare, isPlayerOwned);
-                    stateObj = await pushBackwards(stateObj, targetIndex, attack.pushSquares, attackingUnit.currentSquare, isPlayerOwned);
+                    stateObj = await pullCloser(stateObj, targetIndex, attack.pullSquares, attackingUnit.currentSquare, isPlayerOwned)
                     return stateObj
                 },
                 text: function() {
-                    let textString = "Deal " + this.damage + " damage. Push backwards " + this.pushSquares + "square"
-                    if (this.pushSquares > 1) {
-                        textString += "s"
-                    }
+                    let textString = "Deal " + this.damage + " damage.  Pull enemy " + this.pullSquares + " closer"
                     return textString
                 }
             },

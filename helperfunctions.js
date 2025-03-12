@@ -501,3 +501,132 @@ async function pullCloser(stateObj, targetIndex, squares, attackerSquare, isPlay
     });
 }
 
+async function applyAOEDamage(stateObj, targetIndex, attack, isPlayer, aoeRange) {
+    console.log(`Applying AOE damage with range ${aoeRange} centered on square ${targetIndex}`);
+    
+    // Step 1: First animate the effect
+    await animateAOEAttack(targetIndex, aoeRange, stateObj.gridSize);
+    
+    // Step 2: Calculate affected squares
+    return immer.produce(stateObj, draft => {
+        const targetRow = Math.floor(targetIndex / draft.gridSize);
+        const targetCol = targetIndex % draft.gridSize;
+        const affectedSquares = [];
+        
+        // Find all squares within AOE range of the target
+        for (let rowOffset = -aoeRange; rowOffset <= aoeRange; rowOffset++) {
+            for (let colOffset = -aoeRange; colOffset <= aoeRange; colOffset++) {
+                const newRow = targetRow + rowOffset;
+                const newCol = targetCol + colOffset;
+                
+                // Check if square is within grid boundaries
+                if (newRow >= 0 && newRow < draft.gridSize && newCol >= 0 && newCol < draft.gridSize) {
+                    const squareIndex = newRow * draft.gridSize + newCol;
+                    
+                    // Calculate Chebyshev distance (allows diagonal movement)
+                    const distance = Math.max(Math.abs(rowOffset), Math.abs(colOffset));
+                    
+                    // Only include squares within the specified range
+                    if (distance <= aoeRange) {
+                        affectedSquares.push(squareIndex);
+                    }
+                }
+            }
+        }
+        
+        console.log(`Affected squares: ${affectedSquares.join(', ')}`);
+        
+        // Step 3: Apply damage to player units in affected squares
+        for (let i = 0; i < draft.playerArmy.length; i++) {
+            const unit = draft.playerArmy[i];
+            if (affectedSquares.includes(unit.currentSquare)) {
+                console.log(`Player unit ${unit.name} at square ${unit.currentSquare} takes ${attack.damage} damage`);
+                unit.health -= attack.damage;
+            }
+        }
+        
+        // Step 4: Apply damage to enemy units in affected squares
+        for (let i = 0; i < draft.opponentArmy.length; i++) {
+            const unit = draft.opponentArmy[i];
+            if (affectedSquares.includes(unit.currentSquare)) {
+                console.log(`Enemy unit ${unit.name} at square ${unit.currentSquare} takes ${attack.damage} damage`);
+                unit.health -= attack.damage;
+            }
+        }
+    });
+}
+async function animateAOEAttack(targetSquare, aoeRange, gridSize) {
+    console.log(`Animating AOE attack on square ${targetSquare} with range ${aoeRange}`);
+    
+    const targetRow = Math.floor(targetSquare / gridSize);
+    const targetCol = targetSquare % gridSize;
+    let targetCells = [];
+    let avatars = [];
+    
+    // Find all affected cells
+    const cells = document.querySelectorAll('.grid-cell');
+    if (!cells || cells.length === 0) {
+        console.error('No grid cells found for animation');
+        return;
+    }
+    
+    // Find the target cell for the explosion center
+    const targetCell = cells[targetSquare];
+    if (!targetCell) {
+        console.error(`Target cell at index ${targetSquare} not found`);
+        return;
+    }
+    
+    // Create explosion effect
+    const explosionDiv = document.createElement('div');
+    explosionDiv.className = 'explosion-effect';
+    targetCell.appendChild(explosionDiv);
+    
+    // Add flash effect to all cells in range
+    for (let rowOffset = -aoeRange; rowOffset <= aoeRange; rowOffset++) {
+        for (let colOffset = -aoeRange; colOffset <= aoeRange; colOffset++) {
+            const newRow = targetRow + rowOffset;
+            const newCol = targetCol + colOffset;
+            
+            // Check if square is within grid boundaries
+            if (newRow >= 0 && newRow < gridSize && newCol >= 0 && newCol < gridSize) {
+                const squareIndex = newRow * gridSize + newCol;
+                
+                // Calculate Chebyshev distance (allows diagonal movement)
+                const distance = Math.max(Math.abs(rowOffset), Math.abs(colOffset));
+                
+                // Only include squares within the specified range
+                if (distance <= aoeRange && squareIndex < cells.length) {
+                    const cellToAnimate = cells[squareIndex];
+                    if (cellToAnimate) {
+                        cellToAnimate.classList.add('aoe-damage-effect');
+                        targetCells.push(cellToAnimate);
+                        
+                        // Add shake animation to unit avatars
+                        const avatar = cellToAnimate.querySelector('img');
+                        if (avatar) {
+                            avatar.classList.add('taking-aoe-damage');
+                            avatars.push(avatar);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Wait for animation to complete
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Clean up all animation effects
+    explosionDiv.remove();
+    
+    for (let i = 0; i < targetCells.length; i++) {
+        targetCells[i].classList.remove('aoe-damage-effect');
+    }
+    
+    for (let i = 0; i < avatars.length; i++) {
+        avatars[i].classList.remove('taking-aoe-damage');
+    }
+}
+
+

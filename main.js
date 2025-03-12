@@ -831,7 +831,7 @@ function renderArmySelectionScreen(stateObj) {
     const unitSelectionDiv = document.createElement('div');
     unitSelectionDiv.className = 'unit-selection-container';
 
-    const unitClasses = [BasicWarrior, Samurai, Shotgunner, minigunWarrior, speederBike, stunner, explosive, Lieutenant];
+    const unitClasses = [basicSniper, basicShotgunner, basicGrenadier];
 
     unitClasses.forEach(UnitClass => {
         const unit = new UnitClass(true);
