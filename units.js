@@ -132,13 +132,12 @@ const playerWarrior2 = new Lieutenant(true, 1, "blue", playerLocations[1]);
 const playerWarrior3 = new minigunWarrior(true, 2, "green", playerLocations[2]);
 const playerWarrior4 = new speederBike(true, 3, "gold", playerLocations[3]);
 
-const opponentWarrior1 = new BasicWarrior(false, 4, "red",  opponentLocations[0]);
-const opponentWarrior2 = new BasicWarrior(false, 5, "red", opponentLocations[1]);
-const opponentWarrior3 = new Lieutenant(false, 6, "red", opponentLocations[2]);
-const opponentWarrior4 = new BasicWarrior(false, 7, "red", opponentLocations[3]);
+const opponentWarrior1 = new basicShieldEnemy(false, 4, "red",  opponentLocations[0]);
+const opponentWarrior2 = new basicShieldEnemy(false, 5, "red", opponentLocations[1]);
+const opponentWarrior3 = new basicChargeEnemy(false, 6, "red", opponentLocations[2]);
 
 let playerArray = [playerWarrior2, playerWarrior4]
-let opponentArray = [opponentWarrior1, opponentWarrior3, opponentWarrior4]
+let opponentArray = [opponentWarrior1, opponentWarrior2, opponentWarrior3]
 
 const powerfulWeapons = [
     {
