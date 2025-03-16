@@ -28,7 +28,7 @@ class basicSniper {
                     return stateObj;
                 },
                 text: function() {
-                    return textString
+                    return ""
                 }
             },
             {
@@ -84,7 +84,7 @@ class basicShotgunner {
                     return stateObj;
                 },
                 text: function() {
-                    return textString
+                    return ''
                 }
             },
             {
@@ -137,7 +137,7 @@ class basicGrenadier {
                     return stateObj;
                 },
                 text: function() {
-                    return textString
+                    return ''
                 }
             },
             {

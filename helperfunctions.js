@@ -230,11 +230,13 @@ function removeUnitFromArmy(stateObj, unit) {
 
 function startGame(stateObj) {
     return immer.produce(stateObj, draft => {
-        const playerLocations = getRandomNumbersInRange(0, 16, draft.selectedArmy.length)
+        updateGridCSS(10)
+        const playerLocations = getRandomNumbersInRange(0, stateObj.gridSize*2, draft.selectedArmy.length)
         for (let i=0; i < draft.selectedArmy.length; i++) {
             draft.selectedArmy[i].currentSquare = playerLocations[i]
         }
         draft.playerArmy = draft.selectedArmy;
+        draft.permanentPlayerArmy = draft.selectedArmy
         draft.currentScreen = "normalScreen";
         updateGrid(draft);
     });

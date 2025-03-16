@@ -1,4 +1,4 @@
-
+gridSize = 10
 
 class Samurai extends BasicWarrior {
     constructor(isPlayerOwned = true, id = 0, color="white", unitCurrentSquare = 1) {
@@ -124,8 +124,8 @@ function getRandomNumbersInRange(x, y, arraySize) {
     return Array.from(uniqueNumbers);
 }
 
-const playerLocations = getRandomNumbersInRange(0, 16, 4)
-const opponentLocations = getRandomNumbersInRange(47, 63, 4)
+const playerLocations = getRandomNumbersInRange(0, gridSize*2, 4)
+const opponentLocations = getRandomNumbersInRange(gridSize*(gridSize-2), (gridSize*gridSize)-1, 4)
 
 const playerWarrior1 = new stunner(true, 0, "blue", playerLocations[0]);
 const playerWarrior2 = new Lieutenant(true, 1, "blue", playerLocations[1]);

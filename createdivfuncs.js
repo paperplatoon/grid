@@ -89,6 +89,7 @@ function createStatusIndicator(status, value) {
 }
 
 function createUnitAttacksDiv(unit) {
+    console.log("unit is " + unit.name)
     const rowDiv = document.createElement('div');
     rowDiv.classList.add('attack-bottom-row-div')
 
@@ -148,7 +149,7 @@ function createUnitAttacksDiv(unit) {
 }
 
 function createUnitCard(stateObj, unit, swappable) {
-    let unitIndex = stateObj.playerArmy.indexOf(unit)
+    let unitIndex = stateObj.permanentPlayerArmy.indexOf(unit)
     let unitDiv = document.createElement('div');
     unitDiv.className = 'unit-div';
 
@@ -172,7 +173,7 @@ function displayPlayerUnits(stateObj, swappable=false) {
     const unitRow = document.createElement('div');
     unitRow.className = 'unit-row';
 
-    stateObj.playerArmy.forEach((unit) => {
+    stateObj.permanentPlayerArmy.forEach((unit) => {
         tempUnitDiv = createUnitCard(stateObj, unit, swappable)
         unitRow.append(tempUnitDiv)  
     });

@@ -6,13 +6,14 @@ let state = {
     turnCounter: 0,
     currentFloor: 0,
     playerArmy: [...playerArray],
+    permanentPlayerArmy: [...playerArray],
     opponentArmy: [...opponentArray],
     movableSquares: [],
     attackRangeSquares: [],
     buffableSquares: [],
     selectedUnitIndex: null,
-    gridSize: 8,
-    grid: new Array(64).fill(0),
+    gridSize: 10,
+    grid: new Array(100).fill(0),
     showAttackPopup: false,
     attackPopupPosition: null,
     attackOptions: [],
@@ -25,6 +26,14 @@ let state = {
     startingArmy: [],
     powerfulWeaponChoice: powerfulWeapons[1],
 };
+
+function updateGridCSS(gridSize) {
+    const gridContainer = document.querySelector('.grid-container');
+    if (gridContainer) {
+        gridContainer.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+        gridContainer.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
+    }
+}
 
 async function handleEndTurn(stateObj) {
     stateObj =  immer.produce(stateObj, draft => {
@@ -82,10 +91,6 @@ function renderGrid(stateObj) {
     }
 }
 
-function unitIsSelected(stateObj, unitIndex) {
-    let attackRowDiv = createUnitAttacksDiv(stateObj.playerArmy[stateObj.selectedUnitIndex]);
-
-}
 
 async function renderGlowingSquares(stateObj) {
     const appDiv = document.getElementById('app');
@@ -204,8 +209,10 @@ function handleAttackSelection(stateObj, unitIndex, attackIndex) {
     document.body.appendChild(confirmationPopup);
   
     document.getElementById('confirm-swap').addEventListener('click', () => {
-      stateObj = swapAttack(stateObj, unitIndex, attackIndex);
-      confirmationPopup.remove();
+        const updatedState = swapAttack(stateObj, unitIndex, attackIndex);
+        const newFightState = startNewFight(updatedState);
+        updateState(newFightState); // Call updateState here with the final state
+        confirmationPopup.remove();
     });
   
     document.getElementById('cancel-swap').addEventListener('click', () => {
@@ -214,37 +221,37 @@ function handleAttackSelection(stateObj, unitIndex, attackIndex) {
   }
 
 function swapAttack(stateObj, unitIndex, attackIndex) {
-    stateObj =  immer.produce(stateObj, draft => {
-        const unit = draft.playerArmy[unitIndex];
+    return immer.produce(stateObj, draft => {
+        const unit = draft.permanentPlayerArmy[unitIndex];
         
         unit.attacks[attackIndex] = {...stateObj.powerfulWeaponChoice};
         draft.powerfulWeaponChoice = null;
 
         draft.currentFloor++;
-        draft.startingArmy = draft.playerArmy
+        draft.playerArmy = [...draft.permanentPlayerArmy]
     });
-    return startNewFight(stateObj)
 }
 
   function startNewFight(stateObj) {
     console.log("starting new fight")
-    stateObj = immer.produce(stateObj, draft => {
-      draft.opponentArmy = [...opponentArray];
-      draft.opponentArmy = opponentArray.map(unit => resetUnit(unit));
+    const newState = immer.produce(stateObj, draft => {
+      draft.opponentArmy = [...opponentArray.map(unit => resetUnit(unit))];
       draft.turnCounter = 0;
       draft.playerTurn = true;
       draft.currentScreen = "normalScreen"
       draft.powerfulWeaponChoice = null;
       draft.grid = new Array(draft.gridSize * draft.gridSize).fill(0);
 
-      const playerLocations = getRandomNumbersInRange(0, 16, draft.playerArmy.length)
+      draft.playerArmy = [...draft.permanentPlayerArmy]
+
+      const playerLocations = getRandomNumbersInRange(0, draft.gridSize*2, draft.playerArmy.length)
 
       draft.playerArmy.forEach((unit, unitIndex) => {
         unit.currentSquare = playerLocations[unitIndex];
     });
 
     });
-    updateState(stateObj);
+    return newState
   }
 
 function handleCellClick(stateObj, index) {
